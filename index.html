@@ -61,6 +61,25 @@
             gap: 5px;
         }
         
+        .music-control {
+            position: absolute;
+            left: 20px;
+            top: 15px;
+            background-color: var(--dark);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .music-control:hover {
+            background-color: #1B5E20;
+        }
+        
         .tabs {
             display: flex;
             justify-content: center;
@@ -351,10 +370,12 @@
                 grid-template-columns: 1fr;
             }
             
-            .berry-count {
+            .berry-count, .music-control {
                 position: relative;
                 margin-top: 10px;
                 justify-content: center;
+                left: 0;
+                right: 0;
             }
             
             header {
@@ -367,6 +388,9 @@
     <header>
         <h1><i class="fas fa-seedling"></i> BerryGarden Simulator</h1>
         <div class="berry-count" id="berryCount"><i class="fas fa-coins"></i> 100 Berry</div>
+        <div class="music-control" id="musicControl">
+            <i class="fas fa-volume-up"></i> Musik
+        </div>
     </header>
     
     <div class="tabs">
@@ -454,6 +478,11 @@
     
     <div class="notification" id="notification"></div>
 
+    <!-- Audio element for background music -->
+    <audio id="backgroundMusic" loop>
+        <source src="berrygarden.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
         // Data Game
         let gameData = {
@@ -475,7 +504,8 @@
                 festival: false
             },
             adminMode: false,
-            maxPlots: 6
+            maxPlots: 6,
+            musicEnabled: true
         };
         
         // Data Tanaman
@@ -501,6 +531,10 @@
             drought: { name: "Kekeringan", multiplier: 3, color: "#FFEB3B", icon: "☀️" }
         };
         
+        // Audio elements
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const musicControl = document.getElementById('musicControl');
+        
         // Inisialisasi Game
         function initGame() {
             loadGameData();
@@ -509,9 +543,65 @@
             updateBerryDisplay();
             setupTabs();
             startGrowthCheck();
+            setupMusic();
             
             // Setup event listener untuk upgrade plot
             document.getElementById('upgradePlotButton').addEventListener('click', upgradeGardenPlot);
+        }
+        
+        // Setup musik
+        function setupMusic() {
+            // Atur volume
+            backgroundMusic.volume = 0.4;
+            
+            // Coba putar musik
+            if (gameData.musicEnabled) {
+                const playPromise = backgroundMusic.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        // Autoplay mungkin diblokir, tunggu interaksi pengguna
+                        console.log("Autoplay diblokir, menunggu interaksi pengguna");
+                        document.body.addEventListener('click', function() {
+                            if (gameData.musicEnabled && backgroundMusic.paused) {
+                                backgroundMusic.play();
+                            }
+                        }, { once: true });
+                    });
+                }
+            }
+            
+            // Toggle kontrol musik
+            musicControl.addEventListener('click', toggleMusic);
+            
+            // Perbarui ikon berdasarkan status musik
+            updateMusicIcon();
+        }
+        
+        // Toggle musik
+        function toggleMusic() {
+            gameData.musicEnabled = !gameData.musicEnabled;
+            
+            if (gameData.musicEnabled) {
+                backgroundMusic.play().catch(e => console.log("Play failed: ", e));
+            } else {
+                backgroundMusic.pause();
+            }
+            
+            updateMusicIcon();
+            saveGameData();
+        }
+        
+        // Perbarui ikon musik
+        function updateMusicIcon() {
+            const icon = musicControl.querySelector('i');
+            if (gameData.musicEnabled) {
+                icon.className = 'fas fa-volume-up';
+                musicControl.title = "Matikan musik";
+            } else {
+                icon.className = 'fas fa-volume-mute';
+                musicControl.title = "Nyalakan musik";
+            }
         }
         
         // Load data dari localStorage
