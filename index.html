@@ -261,22 +261,6 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         
-        .admin-section {
-            display: none;
-        }
-        
-        .admin-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        
-        .control-group {
-            background-color: var(--light);
-            padding: 15px;
-            border-radius: 10px;
-        }
-        
         button {
             padding: 10px 15px;
             background-color: var(--primary);
@@ -350,6 +334,56 @@
             font-size: 0.7rem;
         }
         
+        .quest-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+        
+        .quest-tab {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .quest-tab {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .login-rewards, .daily-quests {
+            background-color: var(--light);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .reward-item, .quest-item {
+            background-color: white;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .reward-info, .quest-info {
+            flex-grow: 1;
+            margin-left: 10px;
+        }
+        
+        .reward-icon, .quest-icon {
+            font-size: 1.5rem;
+        }
+        
+        .quest-progress {
+            font-size: 0.9rem;
+            color: var(--dark);
+            margin-top: 5px;
+        }
+        
         @keyframes slideIn {
             from {
                 transform: translateX(100%);
@@ -364,10 +398,6 @@
         @media (max-width: 768px) {
             .garden-grid {
                 grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .admin-controls {
-                grid-template-columns: 1fr;
             }
             
             .berry-count, .music-control {
@@ -397,7 +427,7 @@
         <button class="tab active" data-tab="garden"><i class="fas fa-leaf"></i> Kebun</button>
         <button class="tab" data-tab="market"><i class="fas fa-store"></i> Pasar</button>
         <button class="tab" data-tab="inventory"><i class="fas fa-backpack"></i> Inventori</button>
-        <button class="tab" id="adminTab" data-tab="admin" style="display:none;"><i class="fas fa-cogs"></i> Admin</button>
+        <button class="tab" data-tab="quest"><i class="fas fa-clipboard-list"></i> Quest</button>
     </div>
     
     <div id="gardenSection" class="content-section">
@@ -423,28 +453,21 @@
         </div>
     </div>
     
-    <div id="adminSection" class="content-section admin-section" style="display: none;">
-        <h2><i class="fas fa-cogs"></i> Panel Admin</h2>
-        <div class="admin-controls">
-            <div class="control-group">
-                <h3>Kontrol Stok Benih</h3>
-                <div id="seedStockControls">
-                    <!-- Kontrol stok benih akan diisi oleh JavaScript -->
+    <div id="questSection" class="content-section" style="display: none;">
+        <h2><i class="fas fa-clipboard-list"></i> Quest Harian</h2>
+        <div class="quest-tab">
+            <div class="login-rewards">
+                <h3><i class="fas fa-calendar-check"></i> Login Harian</h3>
+                <div id="loginRewards">
+                    <!-- Login rewards akan diisi oleh JavaScript -->
                 </div>
             </div>
             
-            <div class="control-group">
-                <h3>Event Mutasi</h3>
-                <div id="mutationControls">
-                    <!-- Kontrol mutasi akan diisi oleh JavaScript -->
+            <div class="daily-quests">
+                <h3><i class="fas fa-tasks"></i> Quest Harian</h3>
+                <div id="dailyQuests">
+                    <!-- Daily quests akan diisi oleh JavaScript -->
                 </div>
-            </div>
-            
-            <div class="control-group">
-                <h3>Event Khusus</h3>
-                <button id="doublePriceEvent"><i class="fas fa-money-bill-wave"></i> Harga Jual 2x</button>
-                <button id="bonusHarvestEvent"><i class="fas fa-gift"></i> Bonus Panen</button>
-                <button id="festivalEvent"><i class="fas fa-music"></i> Festival</button>
             </div>
         </div>
     </div>
@@ -464,15 +487,6 @@
             <h2>Panen Berhasil!</h2>
             <p id="harvestDetails"></p>
             <button onclick="closeModal('harvestModal')"><i class="fas fa-check"></i> OK</button>
-        </div>
-    </div>
-    
-    <div class="modal" id="adminLoginModal">
-        <div class="modal-content">
-            <h2>Login Admin</h2>
-            <input type="password" id="adminPassword" placeholder="Masukkan kode admin">
-            <button onclick="checkAdminPassword()"><i class="fas fa-sign-in-alt"></i> Masuk</button>
-            <button onclick="closeModal('adminLoginModal')"><i class="fas fa-times"></i> Batal</button>
         </div>
     </div>
     
@@ -503,9 +517,12 @@
                 bonusHarvest: false,
                 festival: false
             },
-            adminMode: false,
             maxPlots: 6,
-            musicEnabled: true
+            musicEnabled: true,
+            dailyQuests: [],
+            loginStreak: 0,
+            lastLoginDate: null,
+            claimedLoginRewards: []
         };
         
         // Data Tanaman
@@ -519,17 +536,38 @@
             blueberry: { name: "Bluberi", price: 100, growthTime: 420000, value: 200, rarity: "rare", icon: "🫐" },
             watermelon: { name: "Semangka", price: 150, growthTime: 480000, value: 300, rarity: "rare", icon: "🍉" },
             dragonfruit: { name: "Buah Naga", price: 200, growthTime: 540000, value: 500, rarity: "epic", icon: "🐉" },
-            pineapple: { name: "Nanas", price: 250, growthTime: 600000, value: 600, rarity: "epic", icon: "🍍" }
+            pineapple: { name: "Nanas", price: 250, growthTime: 600000, value: 600, rarity: "epic", icon: "🍍" },
+            goldenberry: { name: "Golden Berry", price: 1000, growthTime: 660000, value: 2000, rarity: "rare", icon: "🟡" },
+            rubyapple: { name: "Ruby Apple", price: 1500, growthTime: 720000, value: 3000, rarity: "rare", icon: "🔴" },
+            sapphiregrape: { name: "Sapphire Grape", price: 2000, growthTime: 780000, value: 4000, rarity: "epic", icon: "🔵" },
+            emeraldmelon: { name: "Emerald Melon", price: 2500, growthTime: 840000, value: 5000, rarity: "epic", icon: "🍈" },
+            diamondorange: { name: "Diamond Orange", price: 3000, growthTime: 900000, value: 6000, rarity: "epic", icon: "🍊" },
+            platinumbanana: { name: "Platinum Banana", price: 3500, growthTime: 960000, value: 7000, rarity: "epic", icon: "🍌" },
+            obsidianmango: { name: "Obsidian Mango", price: 4000, growthTime: 1020000, value: 8000, rarity: "epic", icon: "🥭" },
+            crystalpineapple: { name: "Crystal Pineapple", price: 4500, growthTime: 1080000, value: 9000, rarity: "epic", icon: "🍍" },
+            mythiccherry: { name: "Mythic Cherry", price: 5000, growthTime: 1140000, value: 10000, rarity: "epic", icon: "🍒" },
+            legendarypeach: { name: "Legendary Peach", price: 6000, growthTime: 1200000, value: 12000, rarity: "epic", icon: "🍑" }
         };
         
-        // Mutasi dan pengaruhnya
-        const mutationEffects = {
-            lava: { name: "Lava", multiplier: 3, color: "#FF5722", icon: "🌋" },
-            wind: { name: "Angin", multiplier: 2, color: "#03A9F4", icon: "💨" },
-            water: { name: "Air", multiplier: 2, color: "#2196F3", icon: "💧" },
-            earthquake: { name: "Gempa", multiplier: 4, color: "#795548", icon: "🌍" },
-            drought: { name: "Kekeringan", multiplier: 3, color: "#FFEB3B", icon: "☀️" }
-        };
+        // Data Login Rewards
+        const loginRewards = [
+            { day: 1, reward: { type: "berries", amount: 100000 }, text: "100.000 Berry" },
+            { day: 2, reward: { type: "seeds", amount: 1 }, text: "1 Benih Acak" },
+            { day: 3, reward: { type: "berries", amount: 5000 }, text: "5.000 Berry" },
+            { day: 4, reward: { type: "seeds", amount: 2 }, text: "2 Benih Acak" },
+            { day: 5, reward: { type: "berries", amount: 10000 }, text: "10.000 Berry" },
+            { day: 6, reward: { type: "seeds", amount: 3 }, text: "3 Benih Acak" },
+            { day: 7, reward: { type: "berries", amount: 20000 }, text: "20.000 Berry" }
+        ];
+        
+        // Data Daily Quests
+        const dailyQuestTemplates = [
+            { id: "harvest3", name: "Panen 3 Tanaman", description: "Panen 3 tanaman di kebun", goal: 3, reward: { type: "berries", amount: 50 }, icon: "🌾" },
+            { id: "plant5", name: "Tanam 5 Benih", description: "Tanam 5 benih di kebun", goal: 5, reward: { type: "seeds", amount: 1 }, icon: "🌱" },
+            { id: "buy2", name: "Beli 2 Benih", description: "Beli 2 benih di pasar", goal: 2, reward: { type: "berries", amount: 30 }, icon: "🛒" },
+            { id: "harvest5", name: "Panen 5 Tanaman", description: "Panen 5 tanaman di kebun", goal: 5, reward: { type: "berries", amount: 80 }, icon: "🌾" },
+            { id: "plant10", name: "Tanam 10 Benih", description: "Tanam 10 benih di kebun", goal: 10, reward: { type: "seeds", amount: 2 }, icon: "🌱" }
+        ];
         
         // Audio elements
         const backgroundMusic = document.getElementById('backgroundMusic');
@@ -544,6 +582,8 @@
             setupTabs();
             startGrowthCheck();
             setupMusic();
+            checkLoginRewards();
+            generateDailyQuests();
             
             // Setup event listener untuk upgrade plot
             document.getElementById('upgradePlotButton').addEventListener('click', upgradeGardenPlot);
@@ -630,16 +670,6 @@
                 tab.addEventListener('click', () => {
                     const tabName = tab.getAttribute('data-tab');
                     
-                    // Handle admin tab khusus
-                    if (tabName === 'admin') {
-                        if (gameData.adminMode) {
-                            showSection('admin');
-                        } else {
-                            showModal('adminLoginModal');
-                        }
-                        return;
-                    }
-                    
                     // Non-admin tabs
                     tabs.forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
@@ -655,6 +685,8 @@
                         updateSeedStockDisplay();
                     } else if (tabName === 'inventory') {
                         updateInventoryDisplay();
+                    } else if (tabName === 'quest') {
+                        updateQuestDisplay();
                     }
                 });
             });
@@ -693,15 +725,15 @@
                             <p>${plantData[plot.plant].name}</p>
                             <div class="plot-details">Siap panen!</div>
                         `;
-                        plotElement.style.border = `3px solid ${mutationEffects[plot.mutation]?.color || '#4CAF50'}`;
+                        plotElement.style.border = `3px solid #4CAF50`;
                         plotElement.onclick = () => harvestPlant(index);
                         
                         // Tampilkan badge mutasi jika ada
                         if (plot.mutation) {
                             const mutationBadge = document.createElement('div');
                             mutationBadge.className = 'mutation-badge';
-                            mutationBadge.innerHTML = `${mutationEffects[plot.mutation].icon} ${mutationEffects[plot.mutation].name}`;
-                            mutationBadge.style.backgroundColor = mutationEffects[plot.mutation].color;
+                            mutationBadge.innerHTML = `Mutasi`;
+                            mutationBadge.style.backgroundColor = '#FF9800';
                             plotElement.appendChild(mutationBadge);
                         }
                     } else {
@@ -806,6 +838,9 @@
                 }
                 gameData.inventory[plant]++;
                 
+                // Update quest progress
+                updateQuestProgress("buy2", 1);
+                
                 updateBerryDisplay();
                 updateInventoryDisplay();
                 saveGameData();
@@ -847,20 +882,16 @@
             if (gameData.inventory[plant] > 0) {
                 gameData.inventory[plant]--;
                 
-                // Tentukan mutasi acak berdasarkan event aktif
-                let mutation = null;
-                const activeMutations = Object.keys(gameData.mutations).filter(m => gameData.mutations[m]);
-                if (activeMutations.length > 0 && Math.random() < 0.3) {
-                    mutation = activeMutations[Math.floor(Math.random() * activeMutations.length)];
-                }
+                // Update quest progress
+                updateQuestProgress("plant5", 1);
+                updateQuestProgress("plant10", 1);
                 
                 gameData.gardenPlots[plotId] = {
                     planted: true,
                     plant: plant,
                     plantTime: Date.now(),
                     growthTime: plantData[plant].growthTime,
-                    ready: false,
-                    mutation: mutation
+                    ready: false
                 };
                 
                 closeModal('plantModal');
@@ -877,11 +908,6 @@
             const plant = plot.plant;
             let value = plantData[plant].value;
             
-            // Terapkan efek mutasi
-            if (plot.mutation) {
-                value = Math.floor(value * mutationEffects[plot.mutation].multiplier);
-            }
-            
             // Terapkan event khusus
             if (gameData.events.doublePrice) {
                 value *= 2;
@@ -893,6 +919,10 @@
             gameData.berries += value;
             gameData.gardenPlots[plotId] = { planted: false };
             
+            // Update quest progress
+            updateQuestProgress("harvest3", 1);
+            updateQuestProgress("harvest5", 1);
+            
             updateBerryDisplay();
             setupGarden();
             saveGameData();
@@ -900,10 +930,6 @@
             // Tampilkan detail panen
             const harvestDetails = document.getElementById('harvestDetails');
             let detailsText = `Anda memanen ${plantData[plant].name} dan mendapatkan ${value} Berry!`;
-            
-            if (plot.mutation) {
-                detailsText += `<br>Mutasi ${mutationEffects[plot.mutation].name} meningkatkan nilai panen!`;
-            }
             
             if (gameData.events.doublePrice) {
                 detailsText += `<br>Event harga double aktif!`;
@@ -939,7 +965,7 @@
         
         // Update tampilan berry
         function updateBerryDisplay() {
-            document.getElementById('berryCount').innerHTML = `<i class="fas fa-coins"></i> ${gameData.berries} Berry`;
+            document.getElementById('berryCount').innerHTML = `<i class="fas fa-coins"></i> ${gameData.berries.toLocaleString()} Berry`;
         }
         
         // Update tampilan inventori
@@ -989,6 +1015,15 @@
                     generateSeedStock();
                 }
                 
+                // Periksa apakah perlu reset daily quests (setiap 24 jam)
+                if (gameData.dailyQuests.length > 0) {
+                    const lastQuestDate = new Date(gameData.dailyQuests[0].date);
+                    const now = new Date();
+                    if (now.getDate() !== lastQuestDate.getDate() || now.getMonth() !== lastQuestDate.getMonth()) {
+                        generateDailyQuests();
+                    }
+                }
+                
                 if (needsUpdate) {
                     setupGarden();
                     saveGameData();
@@ -1034,120 +1069,248 @@
             }, 3000);
         }
         
-        // Fungsi Admin
-        function checkAdminPassword() {
-            const password = document.getElementById('adminPassword').value;
-            if (password === 'GROWADMIN') {
-                gameData.adminMode = true;
-                document.getElementById('adminTab').style.display = 'block';
-                closeModal('adminLoginModal');
-                showSection('admin');
-                initAdminPanel();
-                showNotification('Mode admin diaktifkan');
-            } else {
-                showNotification('Kode admin salah!', 'error');
-            }
-        }
-        
-        // Inisialisasi panel admin
-        function initAdminPanel() {
-            // Setup kontrol stok benih
-            const seedStockControls = document.getElementById('seedStockControls');
-            seedStockControls.innerHTML = '';
+        // Fungsi Login Rewards
+        function checkLoginRewards() {
+            const today = new Date().toDateString();
+            const lastLogin = gameData.lastLoginDate ? new Date(gameData.lastLoginDate).toDateString() : null;
             
-            for (const plant in plantData) {
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `stock-${plant}`;
-                checkbox.checked = gameData.seedStock.includes(plant);
-                checkbox.addEventListener('change', () => toggleSeedStock(plant, checkbox.checked));
+            // Jika belum pernah login atau hari baru
+            if (!lastLogin || lastLogin !== today) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toDateString();
                 
-                const label = document.createElement('label');
-                label.htmlFor = `stock-${plant}`;
-                label.innerHTML = `${plantData[plant].icon} ${plantData[plant].name}`;
+                // Jika login berturut-turut
+                if (lastLogin === yesterdayStr) {
+                    gameData.loginStreak++;
+                } else {
+                    gameData.loginStreak = 1; // Reset streak jika terputus
+                }
                 
-                seedStockControls.appendChild(checkbox);
-                seedStockControls.appendChild(label);
-                seedStockControls.appendChild(document.createElement('br'));
+                gameData.lastLoginDate = new Date();
+                gameData.claimedLoginRewards = []; // Reset klaim untuk hari baru
+                saveGameData();
             }
             
-            // Setup kontrol mutasi
-            const mutationControls = document.getElementById('mutationControls');
-            mutationControls.innerHTML = '';
+            updateLoginRewardsDisplay();
+        }
+        
+        function claimLoginReward(day) {
+            if (gameData.claimedLoginRewards.includes(day)) {
+                showNotification("Hadiah sudah diklaim!", "error");
+                return;
+            }
             
-            for (const mutation in gameData.mutations) {
-                const button = document.createElement('button');
-                button.id = `mutation-${mutation}`;
-                button.innerHTML = `${mutationEffects[mutation].icon} ${mutationEffects[mutation].name}`;
-                if (gameData.mutations[mutation]) {
-                    button.classList.add('event-active');
+            const reward = loginRewards[day - 1].reward;
+            
+            if (reward.type === "berries") {
+                gameData.berries += reward.amount;
+                showNotification(`Anda mendapatkan ${reward.amount.toLocaleString()} Berry!`);
+            } else if (reward.type === "seeds") {
+                // Berikan benih acak
+                const plants = Object.keys(plantData);
+                const randomPlant = plants[Math.floor(Math.random() * plants.length)];
+                
+                if (!gameData.inventory[randomPlant]) {
+                    gameData.inventory[randomPlant] = 0;
                 }
-                button.addEventListener('click', () => toggleMutation(mutation));
-                mutationControls.appendChild(button);
+                gameData.inventory[randomPlant] += reward.amount;
+                
+                showNotification(`Anda mendapatkan ${reward.amount} benih ${plantData[randomPlant].name}!`);
             }
             
-            // Setup event khusus
-            document.getElementById('doublePriceEvent').addEventListener('click', () => toggleEvent('doublePrice'));
-            document.getElementById('bonusHarvestEvent').addEventListener('click', () => toggleEvent('bonusHarvest'));
-            document.getElementById('festivalEvent').addEventListener('click', () => toggleEvent('festival'));
+            gameData.claimedLoginRewards.push(day);
+            saveGameData();
+            updateLoginRewardsDisplay();
+            updateBerryDisplay();
+            updateInventoryDisplay();
         }
         
-        // Toggle stok benih (admin)
-        function toggleSeedStock(plant, enabled) {
-            if (enabled && !gameData.seedStock.includes(plant)) {
-                gameData.seedStock.push(plant);
-            } else if (!enabled && gameData.seedStock.includes(plant)) {
-                gameData.seedStock = gameData.seedStock.filter(p => p !== plant);
+        function updateLoginRewardsDisplay() {
+            const loginRewardsContainer = document.getElementById('loginRewards');
+            loginRewardsContainer.innerHTML = '';
+            
+            const currentDay = Math.min(gameData.loginStreak, 7);
+            
+            loginRewards.forEach((reward, index) => {
+                const day = index + 1;
+                const isClaimed = gameData.claimedLoginRewards.includes(day);
+                const isAvailable = day <= currentDay;
+                
+                const rewardItem = document.createElement('div');
+                rewardItem.className = 'reward-item';
+                
+                rewardItem.innerHTML = `
+                    <div class="reward-icon">${isClaimed ? '✅' : '🎁'}</div>
+                    <div class="reward-info">
+                        <strong>Hari ${day}</strong>: ${reward.text}
+                    </div>
+                    <button ${isClaimed || !isAvailable ? 'disabled' : ''} onclick="claimLoginReward(${day})">
+                        ${isClaimed ? 'Sudah diklaim' : 'Klaim'}
+                    </button>
+                `;
+                
+                loginRewardsContainer.appendChild(rewardItem);
+            });
+            
+            // Tampilkan streak saat ini
+            const streakInfo = document.createElement('p');
+            streakInfo.style.marginTop = '10px';
+            streakInfo.style.textAlign = 'center';
+            streakInfo.innerHTML = `<strong>Login Streak:</strong> ${gameData.loginStreak} hari`;
+            loginRewardsContainer.appendChild(streakInfo);
+        }
+        
+        // Fungsi Daily Quests
+        function generateDailyQuests() {
+            const today = new Date().toDateString();
+            
+            // Jika quest sudah digenerate hari ini, tidak perlu generate baru
+            if (gameData.dailyQuests.length > 0) {
+                const questDate = new Date(gameData.dailyQuests[0].date).toDateString();
+                if (questDate === today) {
+                    return;
+                }
             }
             
-            // Pastikan tetap 10 benih
-            if (gameData.seedStock.length > 10) {
-                gameData.seedStock = gameData.seedStock.slice(0, 10);
-            } else if (gameData.seedStock.length < 10) {
-                // Tambahkan benih acak jika kurang dari 10
-                const allPlants = Object.keys(plantData);
-                while (gameData.seedStock.length < 10 && gameData.seedStock.length < allPlants.length) {
-                    const randomPlant = allPlants[Math.floor(Math.random() * allPlants.length)];
-                    if (!gameData.seedStock.includes(randomPlant)) {
-                        gameData.seedStock.push(randomPlant);
-                    }
+            // Generate 3 quest acak
+            gameData.dailyQuests = [];
+            const usedIndices = new Set();
+            
+            while (gameData.dailyQuests.length < 3) {
+                const randomIndex = Math.floor(Math.random() * dailyQuestTemplates.length);
+                
+                if (!usedIndices.has(randomIndex)) {
+                    usedIndices.add(randomIndex);
+                    
+                    const quest = {...dailyQuestTemplates[randomIndex]};
+                    quest.date = new Date();
+                    quest.progress = 0;
+                    quest.completed = false;
+                    quest.claimed = false;
+                    
+                    gameData.dailyQuests.push(quest);
                 }
             }
             
             saveGameData();
-            updateSeedStockDisplay();
+            updateQuestDisplay();
         }
         
-        // Toggle mutasi (admin)
-        function toggleMutation(mutation) {
-            gameData.mutations[mutation] = !gameData.mutations[mutation];
-            const button = document.getElementById(`mutation-${mutation}`);
-            
-            if (gameData.mutations[mutation]) {
-                button.classList.add('event-active');
-                showNotification(`Event mutasi ${mutationEffects[mutation].name} diaktifkan`);
-            } else {
-                button.classList.remove('event-active');
-                showNotification(`Event mutasi ${mutationEffects[mutation].name} dimatikan`);
+        function updateQuestProgress(questId, amount) {
+            const quest = gameData.dailyQuests.find(q => q.id === questId);
+            if (quest && !quest.completed) {
+                quest.progress += amount;
+                
+                if (quest.progress >= quest.goal) {
+                    quest.completed = true;
+                    showNotification(`Quest "${quest.name}" selesai! Klaim hadiahmu.`);
+                }
+                
+                saveGameData();
+                updateQuestDisplay();
             }
-            
-            saveGameData();
         }
         
-        // Toggle event khusus (admin)
-        function toggleEvent(event) {
-            gameData.events[event] = !gameData.events[event];
-            const button = document.getElementById(`${event}Event`);
+        function claimQuestReward(questIndex) {
+            const quest = gameData.dailyQuests[questIndex];
             
-            if (gameData.events[event]) {
-                button.classList.add('event-active');
-                showNotification(`Event ${event} diaktifkan`);
-            } else {
-                button.classList.remove('event-active');
-                showNotification(`Event ${event} dimatikan`);
+            if (!quest.completed) {
+                showNotification("Quest belum selesai!", "error");
+                return;
             }
             
+            if (quest.claimed) {
+                showNotification("Hadiah sudah diklaim!", "error");
+                return;
+            }
+            
+            const reward = quest.reward;
+            
+            if (reward.type === "berries") {
+                gameData.berries += reward.amount;
+                showNotification(`Anda mendapatkan ${reward.amount} Berry dari quest!`);
+            } else if (reward.type === "seeds") {
+                // Berikan benih acak
+                const plants = Object.keys(plantData);
+                const randomPlant = plants[Math.floor(Math.random() * plants.length)];
+                
+                if (!gameData.inventory[randomPlant]) {
+                    gameData.inventory[randomPlant] = 0;
+                }
+                gameData.inventory[randomPlant] += reward.amount;
+                
+                showNotification(`Anda mendapatkan ${reward.amount} benih ${plantData[randomPlant].name} dari quest!`);
+            }
+            
+            quest.claimed = true;
             saveGameData();
+            updateQuestDisplay();
+            updateBerryDisplay();
+            updateInventoryDisplay();
+        }
+        
+        function updateQuestDisplay() {
+            const dailyQuestsContainer = document.getElementById('dailyQuests');
+            dailyQuestsContainer.innerHTML = '';
+            
+            if (gameData.dailyQuests.length === 0) {
+                dailyQuestsContainer.innerHTML = '<p>Tidak ada quest hari ini.</p>';
+                return;
+            }
+            
+            gameData.dailyQuests.forEach((quest, index) => {
+                const questItem = document.createElement('div');
+                questItem.className = 'quest-item';
+                
+                questItem.innerHTML = `
+                    <div class="quest-icon">${quest.icon}</div>
+                    <div class="quest-info">
+                        <strong>${quest.name}</strong>
+                        <p>${quest.description}</p>
+                        <div class="quest-progress">
+                            Progress: ${Math.min(quest.progress, quest.goal)}/${quest.goal}
+                        </div>
+                    </div>
+                    <button ${!quest.completed || quest.claimed ? 'disabled' : ''} onclick="claimQuestReward(${index})">
+                        ${quest.claimed ? 'Sudah diklaim' : (quest.completed ? 'Klaim' : 'Progress')}
+                    </button>
+                `;
+                
+                dailyQuestsContainer.appendChild(questItem);
+            });
+        }
+        
+        function updateQuestDisplay() {
+            const dailyQuestsContainer = document.getElementById('dailyQuests');
+            dailyQuestsContainer.innerHTML = '';
+            
+            if (gameData.dailyQuests.length === 0) {
+                dailyQuestsContainer.innerHTML = '<p>Memuat quest harian...</p>';
+                generateDailyQuests();
+                return;
+            }
+            
+            gameData.dailyQuests.forEach((quest, index) => {
+                const questItem = document.createElement('div');
+                questItem.className = 'quest-item';
+                
+                questItem.innerHTML = `
+                    <div class="quest-icon">${quest.icon}</div>
+                    <div class="quest-info">
+                        <strong>${quest.name}</strong>
+                        <p>${quest.description}</p>
+                        <div class="quest-progress">
+                            Progress: ${Math.min(quest.progress, quest.goal)}/${quest.goal}
+                        </div>
+                    </div>
+                    <button ${!quest.completed || quest.claimed ? 'disabled' : ''} onclick="claimQuestReward(${index})">
+                        ${quest.claimed ? 'Sudah diklaim' : (quest.completed ? 'Klaim' : 'Progress')}
+                    </button>
+                `;
+                
+                dailyQuestsContainer.appendChild(questItem);
+            });
         }
         
         // Inisialisasi game saat halaman dimuat
